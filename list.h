@@ -18,21 +18,21 @@
 
 // PUSH appends a new value to the end of a list and reallocates if new space is needed.
 // Cannot be used as an expression.
-#define PUSH(list, elem)                  \
+#define LIST_PUSH(list, elem)                  \
 {                                         \
-    if (list.len >= list.cap) GROW(list); \
+    if (list.len >= list.cap) LIST_GROW_(list); \
     list.ptr[list.len++] = elem;          \
 }
 
 // POP removes the last element in a list and returns it back. Can be used as an expression.
-#define POP(list) (list.ptr[--list.len])
+#define LIST_POP(list) (list.ptr[--list.len])
 
-// GROW increases the list's capacity further. Intended for internal use by PUSH primarily.
+// LIST_GROW_ increases the list's capacity further. Intended for internal use by PUSH primarily.
 // Cannot be used as an expression.
 //
 // Note: if realloc fails, an assertation is raised. However, if NDEBUG is defined, list.ptr
 // will be silently be set to NULL, therefore next list access most likely results in segfault.
-#define GROW(list)                                                 \
+#define LIST_GROW_(list)                                                 \
 {                                                                  \
     const size_t threshold = 256;                                  \
     size_t nextcap;                                                \
@@ -47,5 +47,5 @@
     list.cap = nextcap;                                            \
 }
 
-// FREE deallocates a list by freeing its pointer. Can be used as an expression.
-#define FREE(list) free(list.ptr)
+// LIST_FREE deallocates a list by freeing its pointer. Can be used as an expression.
+#define LIST_FREE(list) free(list.ptr)

@@ -15,7 +15,7 @@ typedef List(uint32_t) ListU32;
 
 ListU32 fill_list(ListU32 list) {
     for (uint32_t i = 0; i < 10; i++)
-        PUSH(list, i);
+        LIST_PUSH(list, i);
     return list;
 }
 
@@ -33,7 +33,7 @@ void test_append_(ListU32 list) {
 void test_push_to_empty_list() {
     ListU32 list = {0};
     test_append_(list);
-    FREE(list);
+    LIST_FREE(list);
 }
 
 void test_push_to_preallocd_list() {
@@ -41,15 +41,15 @@ void test_push_to_preallocd_list() {
     uint32_t* origptr = list.ptr;
     test_append_(list);
     TEST_ASSERT(origptr == list.ptr);
-    FREE(list);
+    LIST_FREE(list);
 }
 
 void test_pop() {
     ListU32 list = fill_list((ListU32) NEWLIST(uint32_t, 10));
     uint32_t counter = 9;
     while (list.len > 0)
-        TEST_ASSERT(POP(list) == counter--);
-    FREE(list);
+        TEST_ASSERT(LIST_POP(list) == counter--);
+    LIST_FREE(list);
 }
 
 int main() {
