@@ -1,5 +1,10 @@
 project('c-containers', 'c', version : '0.0.1')
 
+if get_option('buildtype').startswith('debug')
+    message('Building with sanitizers')
+    add_project_arguments('-fsanitize=address,undefined', language: 'c')
+endif
+
 # Mount subdirectories
 tests = []
 
