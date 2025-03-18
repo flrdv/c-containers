@@ -30,9 +30,25 @@ void test_insert() {
     map_free(&map);
 }
 
+void test_grow() {
+    Hashmap map = map_new();
+    const int values = 1000000;
+
+    for (int64_t i = 1; i < values+1; i++)
+        map_insert(&map, i, (VALUE)(i^123));
+
+    for (int64_t i = 1; i < values+1; i++) {
+        VALUE value = map_access(&map, i);
+        TEST_ASSERT_EQUAL((VALUE)(i^123), value);
+    }
+
+    map_free(&map);
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_lookup_empty_map);
     RUN_TEST(test_insert);
+    RUN_TEST(test_grow);
     return UNITY_END();
 }

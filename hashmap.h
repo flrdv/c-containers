@@ -17,6 +17,8 @@ static const int minBucketCnt = 1 << minB;
 // start growing with an average of 7 slots taken over all buckets
 static const int loadfactor = 6;
 
+// tophash_empty and tophash_empty_rest are almost the same, just the tophash_empty_rest
+// hints lookup to stop looking for a value and report no-entry.
 static const uint8_t tophash_empty_rest = 0;
 static const uint8_t tophash_empty = 1;
 static const uint8_t tophash_min = 2;
@@ -37,8 +39,6 @@ typedef struct Bucket {
     VALUE values[BUCKET_SLOTS];
     struct Bucket* nextb;
 } Bucket;
-
-typedef List(Bucket*) OFBuckets;
 
 typedef struct {
     uint8_t b;          // log2 of lower hash bits for buckets addressing
@@ -70,17 +70,22 @@ static uint32_t bucketMask(const uint8_t b) {
 }
 
 static Bucket map_newbucket() {
-    return (Bucket){.tophash = {[0] = tophash_empty_rest}};
+    // 0 here means tophash_empty_rest
+    return (Bucket){.tophash = {0}};
 }
 
 static Bucket* map_getoverflow(Hashmap* map) {
     if (map->overflowbuckets.len == 0) {
+        // TODO: we could store buckets in a list instead of malloc'ing every single one
         Bucket* newbucket = malloc(sizeof(Bucket));
         *newbucket = map_newbucket();
         return newbucket;
     }
 
-    return LIST_POP(map->overflowbuckets);
+    Bucket* bucket = LIST_POP(map->overflowbuckets);
+    *bucket = map_newbucket();
+
+    return bucket;
 }
 
 static void map_returnoverflow(Hashmap* map, Bucket* bucket) {
@@ -88,10 +93,7 @@ static void map_returnoverflow(Hashmap* map, Bucket* bucket) {
 }
 
 static Bucket* map_newbucketarray(const uint8_t b) {
-    Bucket* buckarr = malloc((1 << b) * sizeof(Bucket));
-    for (ssize_t i = 0; i <= bucketMask(b); i++)
-        buckarr[i].tophash[0] = tophash_empty_rest;
-
+    Bucket* buckarr = calloc(1 << b,  sizeof(Bucket));
     return buckarr;
 }
 
@@ -132,14 +134,14 @@ static VALUE map_access(const Hashmap* map, const KEY key) {
 }
 
 static uint32_t map_totalbuckets(const Hashmap* map) {
-    return map->b + map->overflowbuckets.len;
+    return (1 << map->b) + map->overflowbuckets.len;
 }
 
 static bool map_shouldgrow(const Hashmap* map) {
     return map->len / map_totalbuckets(map) > loadfactor;
 }
 
-static void map_insert(Hashmap* map, KEY key, VALUE value);
+static void map_insert_(Hashmap* map, KEY key, VALUE value);
 
 static void map_insert_from_bucket_(Hashmap* map, const Bucket* bucket) {
     for (ssize_t slot = 0; slot < BUCKET_SLOTS; slot++) {
@@ -148,7 +150,7 @@ static void map_insert_from_bucket_(Hashmap* map, const Bucket* bucket) {
         if (bucket->tophash[slot] == tophash_empty_rest)
             break;
 
-        map_insert(map, bucket->keys[slot], bucket->values[slot]);
+        map_insert_(map, bucket->keys[slot], bucket->values[slot]);
     }
 }
 
@@ -157,7 +159,7 @@ static void map_grow(Hashmap* map) {
     Bucket* oldbuckets = map->buckets;
     map->buckets = map_newbucketarray(map->b);
 
-    for (ssize_t i = 0; i < bucketMask(map->b-1); i++) {
+    for (ssize_t i = 0; i < bucketMask(map->b-1)+1; i++) {
         const Bucket* bucket = &oldbuckets[i];
         map_insert_from_bucket_(map, bucket);
 
@@ -173,10 +175,7 @@ static void map_grow(Hashmap* map) {
     free(oldbuckets);
 }
 
-static void map_insert(Hashmap* map, const KEY key, const VALUE value) {
-    if (map_shouldgrow(map))
-        map_grow(map);
-
+static void map_insert_(Hashmap* map, const KEY key, const VALUE value) {
     const HASHTYPE hash = map_hash(key);
     const uint32_t buckindex = hash & bucketMask(map->b);
     Bucket* bucket = &map->buckets[buckindex];
@@ -193,13 +192,18 @@ static void map_insert(Hashmap* map, const KEY key, const VALUE value) {
             return;
         }
 
-        if (bucket->nextb == NULL) {
+        if (bucket->nextb == NULL)
             bucket->nextb = map_getoverflow(map);
-            LIST_PUSH(map->overflowbuckets, bucket->nextb);
-        }
 
         bucket = bucket->nextb;
     }
+}
+
+static void map_insert(Hashmap* map, const KEY key, const VALUE value) {
+    if (map_shouldgrow(map))
+        map_grow(map);
+
+    map_insert_(map, key, value);
 }
 
 static void map_free(Hashmap const* map) {
