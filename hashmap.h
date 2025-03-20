@@ -93,8 +93,7 @@ static void map_returnoverflow(Hashmap* map, Bucket* bucket) {
 }
 
 static Bucket* map_newbucketarray(const uint8_t b) {
-    Bucket* buckarr = calloc(1 << b,  sizeof(Bucket));
-    return buckarr;
+    return calloc(1 << b,  sizeof(Bucket));
 }
 
 static Hashmap map_new() {
