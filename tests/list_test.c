@@ -19,7 +19,7 @@ ListU32 fill_list(ListU32 list) {
     return list;
 }
 
-void test_append_(ListU32 list) {
+ListU32 test_append_(ListU32 list) {
     list = fill_list(list);
 
     TEST_ASSERT(list.len == 10);
@@ -28,18 +28,20 @@ void test_append_(ListU32 list) {
 
     for (ssize_t i = 0; i < 10; i++)
         TEST_ASSERT(list.ptr[i] == i);
+
+    return list;
 }
 
 void test_push_to_empty_list() {
     ListU32 list = {0};
-    test_append_(list);
+    list = test_append_(list);
     LIST_FREE(list);
 }
 
 void test_push_to_preallocd_list() {
     ListU32 list = NEWLIST(uint32_t, 10);
     uint32_t* origptr = list.ptr;
-    test_append_(list);
+    list = test_append_(list);
     TEST_ASSERT(origptr == list.ptr);
     LIST_FREE(list);
 }
