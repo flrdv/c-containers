@@ -8,9 +8,12 @@
 #include <assert.h>
 #include <errno.h>
 
-// List initializes a new list-type with the provided type as an anonymous structure.
+// List defines a list-type with the provided type as an anonymous structure.
 // Therefore, it may be a good idea to typedef it.
-#define List(T) struct { size_t len; size_t cap; T* ptr; }
+#define List(T) NamedList( , T)
+
+// Defines a list-type with the provided type as a named struct.
+#define NamedList(name, T) struct name { size_t len; size_t cap; T* ptr; }
 
 // NEWLIST is an initializer of an empty list of type T and capable of containing `size`
 // elements before reallocations.
